@@ -11,6 +11,7 @@ import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.model.Defaults
+import org.gradle.model.Each
 import org.gradle.model.Model
 import org.gradle.model.ModelMap
 import org.gradle.model.Mutate
@@ -19,12 +20,10 @@ import org.gradle.model.RuleSource
 import org.gradle.model.Validate
 import org.gradle.platform.base.BinaryTasks
 import org.gradle.platform.base.BinaryType
-import org.gradle.platform.base.BinaryTypeBuilder
 import org.gradle.platform.base.ComponentBinaries
 import org.gradle.platform.base.ComponentType
-import org.gradle.platform.base.ComponentTypeBuilder
 import org.gradle.platform.base.LanguageType
-import org.gradle.platform.base.LanguageTypeBuilder
+import org.gradle.platform.base.TypeBuilder
 
 /**
  * Created by pledbrook on 25/11/2015.
@@ -35,33 +34,49 @@ class AsciidoctorPlugin implements Plugin<Project> {
     }
 
     static class Rules extends RuleSource {
+        /* 2.12 */
+        @ComponentType
+        void registerComponentType(TypeBuilder<AsciidocDocumentSpec> builder) {}
+
+        /* 2.11
         @ComponentType
         void registerComponentType(ComponentTypeBuilder<AsciidocDocumentSpec> builder) {}
+        */
 
         @BinaryType
-        void registerBinaryType(BinaryTypeBuilder<AsciidocBinarySpec> builder) {
+        // 2.12
+        void registerBinaryType(TypeBuilder<AsciidocBinarySpec> builder) {
+        // 2.11 void registerBinaryType(BinaryTypeBuilder<AsciidocBinarySpec> builder) {
             builder.internalView(AsciidocBinarySpecInternal)
         }
 
-        @BinaryType
-        void registerHtmlBinaryType(BinaryTypeBuilder<HtmlBinarySpec> builder) {
-            builder.internalView(HtmlBinarySpecInternal)
+//        @BinaryType
+//        void registerHtmlBinaryType(TypeBuilder<HtmlBinarySpec> builder) {
+//            builder.internalView(HtmlBinarySpecInternal)
+//        }
+
+//        @BinaryType
+//        void registerPdfBinaryType(TypeBuilder<PdfBinarySpecInternal> builder) {
+//            builder.internalView(PdfBinarySpecInternal)
+//        }
+
+        /* 2.12 */
+        @LanguageType
+        void registerSourceSetType(TypeBuilder<AsciidocSourceSet> builder) {
         }
 
-        @BinaryType
-        void registerPdfBinaryType(BinaryTypeBuilder<PdfBinarySpecInternal> builder) {
-            builder.internalView(PdfBinarySpecInternal)
-        }
-
+        /* 2.11
         @LanguageType
         void registerSourceSetType(LanguageTypeBuilder<AsciidocSourceSet> builder) {
             builder.languageName = "Asciidoc"
         }
+         */
 
+        /** 2.12 */
         @Defaults
-        void createMainComponent(ModelMap<AsciidocDocumentSpec> documents) {
-            documents.create("docs") { component ->
-                component.sources.create("main", AsciidocSourceSet)
+        void createMainSourceSet(@Each AsciidocDocumentSpec document) {
+            document.sources.create("asciidoc", AsciidocSourceSet) { sourceSet ->
+                sourceSet.source.srcDir("src/${document.name}/asciidoc")
             }
         }
 
@@ -89,6 +104,9 @@ class AsciidoctorPlugin implements Plugin<Project> {
                 ModelMap<AsciidocBinarySpecInternal> binaries,
                 AsciidocDocumentSpec component,
                 @Path("buildDir") File buildDir) {
+            println "Running generateBinaries() rule"
+            println "Binaries: ${binaries}"
+            println "Component: ${component.name}"
             binaries.create("html", HtmlBinarySpecInternal) { binary ->
                 binary.document = component
 //                    outputDir = new File(buildDir, "${component.name}/${binary.name}")

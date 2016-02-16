@@ -8,7 +8,6 @@ import org.gradle.model.Managed
 @Managed
 interface AsciidocBinarySpecInternal extends AsciidocBinarySpec {
     String getBackend()
-    void setBackend(String backend)
 
     AsciidocDocumentSpec getDocument()
     void setDocument(AsciidocDocumentSpec doc)

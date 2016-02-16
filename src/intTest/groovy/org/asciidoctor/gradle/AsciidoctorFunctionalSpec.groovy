@@ -55,12 +55,12 @@ class AsciidoctorFunctionalSpec extends Specification {
         when:
         final result = GradleRunner.create()
                 .withProjectDir(testProjectDir.getRoot())
-                .withArguments("--stacktrace", "asciidoctor")
+                .withArguments("--stacktrace", "assemble")
                 .withPluginClasspath(pluginClasspath)
                 .build()
 
         then:
-        result.task(":asciidoctor").outcome == TaskOutcome.UP_TO_DATE
+        result.task(":assemble").outcome == TaskOutcome.UP_TO_DATE
     }
 
     @SuppressWarnings('MethodName')
@@ -77,13 +77,7 @@ class AsciidoctorFunctionalSpec extends Specification {
 
         model {
             components {
-                docs(AsciidocDocumentSpec) {
-                    binaries {
-                        pdf(PdfBinarySpec) {
-                            document = \$.docs
-                        }
-                    }
-                }
+                docs(AsciidocDocumentSpec)
             }
         }
         """.stripIndent()
