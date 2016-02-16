@@ -55,7 +55,7 @@ class AsciidoctorFunctionalSpec extends Specification {
         when:
         final result = GradleRunner.create()
                 .withProjectDir(testProjectDir.getRoot())
-                .withArguments("asciidoctor")
+                .withArguments("--stacktrace", "asciidoctor")
                 .withPluginClasspath(pluginClasspath)
                 .build()
 
@@ -68,10 +68,25 @@ class AsciidoctorFunctionalSpec extends Specification {
         given: "A minimal build file"
         def buildFile = testProjectDir.newFile("build.gradle")
         buildFile << """\
+        import org.asciidoctor.gradle.model.AsciidocDocumentSpec
+        import org.asciidoctor.gradle.model.PdfBinarySpec
+
         plugins {
             id "org.asciidoctor.gradle.asciidoctor"
         }
-        """
+
+        model {
+            components {
+                docs(AsciidocDocumentSpec) {
+                    binaries {
+                        pdf(PdfBinarySpec) {
+                            document = \$.docs
+                        }
+                    }
+                }
+            }
+        }
+        """.stripIndent()
 
         and: "Some source files"
         FileUtils.copyDirectory(new File(TEST_PROJECTS_DIR, "normal"), testProjectDir.root)
@@ -85,7 +100,7 @@ class AsciidoctorFunctionalSpec extends Specification {
                 .build()
 
         then:
-        result.task(":asciidoctor").outcome == TaskOutcome.SUCCESS
+        result.task(":asciidoctorDocsAsHtml").outcome == TaskOutcome.SUCCESS
         new File(buildDir, "asciidoc/html5/sample.html").exists()
         new File(buildDir, "asciidoc/html5/subdir/sample2.html").exists()
     }

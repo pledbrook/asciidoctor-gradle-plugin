@@ -1,5 +1,12 @@
 package org.asciidoctor.gradle
 
+import org.asciidoctor.gradle.model.AsciidocBinarySpec
+import org.asciidoctor.gradle.model.AsciidocBinarySpecInternal
+import org.asciidoctor.gradle.model.AsciidocDocumentSpec
+import org.asciidoctor.gradle.model.AsciidocSourceSet
+import org.asciidoctor.gradle.model.HtmlBinarySpec
+import org.asciidoctor.gradle.model.HtmlBinarySpecInternal
+import org.asciidoctor.gradle.model.PdfBinarySpecInternal
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.Task
@@ -7,8 +14,17 @@ import org.gradle.model.Defaults
 import org.gradle.model.Model
 import org.gradle.model.ModelMap
 import org.gradle.model.Mutate
+import org.gradle.model.Path
 import org.gradle.model.RuleSource
 import org.gradle.model.Validate
+import org.gradle.platform.base.BinaryTasks
+import org.gradle.platform.base.BinaryType
+import org.gradle.platform.base.BinaryTypeBuilder
+import org.gradle.platform.base.ComponentBinaries
+import org.gradle.platform.base.ComponentType
+import org.gradle.platform.base.ComponentTypeBuilder
+import org.gradle.platform.base.LanguageType
+import org.gradle.platform.base.LanguageTypeBuilder
 
 /**
  * Created by pledbrook on 25/11/2015.
@@ -19,60 +35,78 @@ class AsciidoctorPlugin implements Plugin<Project> {
     }
 
     static class Rules extends RuleSource {
-        @Model
-        void sourceSets(ModelMap<AdocSourceSet> sourceSets) {}
+        @ComponentType
+        void registerComponentType(ComponentTypeBuilder<AsciidocDocumentSpec> builder) {}
 
-        @Model
-        void formats(ModelMap<AdocBackend> backends) {}
+        @BinaryType
+        void registerBinaryType(BinaryTypeBuilder<AsciidocBinarySpec> builder) {
+            builder.internalView(AsciidocBinarySpecInternal)
+        }
 
-        @Defaults
-        void createMainSourceSet(ModelMap<AdocSourceSet> sourceSets) {
-            sourceSets.create("docs") { ss ->
-                ss.srcDir = "src/${ss.name}/asciidoc"
-                ss.includes = ["**/*.adoc"]
-            }
+        @BinaryType
+        void registerHtmlBinaryType(BinaryTypeBuilder<HtmlBinarySpec> builder) {
+            builder.internalView(HtmlBinarySpecInternal)
+        }
+
+        @BinaryType
+        void registerPdfBinaryType(BinaryTypeBuilder<PdfBinarySpecInternal> builder) {
+            builder.internalView(PdfBinarySpecInternal)
+        }
+
+        @LanguageType
+        void registerSourceSetType(LanguageTypeBuilder<AsciidocSourceSet> builder) {
+            builder.languageName = "Asciidoc"
         }
 
         @Defaults
-        void createBackends(ModelMap<AdocBackend> backends) {
-            backends.create("html5") { backend ->
-                backend.outputDir = "html"
-            }
-
-            backends.create("docbook") { backend ->
-                backend.outputDir = "docbook"
+        void createMainComponent(ModelMap<AsciidocDocumentSpec> documents) {
+            documents.create("docs") { component ->
+                component.sources.create("main", AsciidocSourceSet)
             }
         }
 
-        @Mutate
-        void createTasks(ModelMap<Task> tasks, ModelMap<AdocSourceSet> sourceSets, ModelMap<AdocBackend> backends) {
-            if (sourceSets.size() > 0 && backends.size() > 0) {
-                tasks.create("generateAllDocs")
+//        @Defaults
+//        void createMainSourceSet(ModelMap<AsciidocSourceSet> sourceSets) {
+//            sourceSets.create("docs") { ss ->
+//                ss.srcDir = "src/${ss.name}/asciidoc"
+//                ss.includes = ["**/*.adoc"]
+//            }
+//        }
+//
+//        @Defaults
+//        void createBackends(ModelMap<AsciidocBackend> backends) {
+//            backends.create("html5") { backend ->
+//                backend.outputDir = "html"
+//            }
+//
+//            backends.create("docbook") { backend ->
+//                backend.outputDir = "docbook"
+//            }
+//        }
+
+        @ComponentBinaries
+        void generateBinaries(
+                ModelMap<AsciidocBinarySpecInternal> binaries,
+                AsciidocDocumentSpec component,
+                @Path("buildDir") File buildDir) {
+            binaries.create("html", HtmlBinarySpecInternal) { binary ->
+                binary.document = component
+//                    outputDir = new File(buildDir, "${component.name}/${binary.name}")
             }
 
-            sourceSets.values().each { ss ->
-                backends.values().each { backend ->
-                    def taskName = "generate${ss.name.capitalize()}To${backend.name.capitalize()}"
-                    tasks.create(taskName) { task ->
-                        task.doLast {
-                            println "Generating Asciidoc for ${ss.name} source set as ${backend.name}"
-                        }
-                    }
+            binaries.create("pdf", PdfBinarySpecInternal) { binary ->
+                binary.document = component
+            }
+        }
 
-                    tasks.get("generateAllDocs").dependsOn(tasks.get(taskName))
+        @BinaryTasks
+        void generateTasks(ModelMap<Task> tasks, AsciidocBinarySpecInternal binarySpec) {
+            binarySpec.inputs.withType(AsciidocSourceSet) { ss ->
+                def taskName = binarySpec.tasks.taskName("asciidoctor", binarySpec.document.name) +
+                        "As${binarySpec.name.capitalize()}"
+                tasks.create(taskName, AsciidoctorTask) { task ->
+                    task.backend = binarySpec.backend
                 }
-            }
-        }
-
-        @Mutate
-        void notCreatingTasks(ModelMap<Task> tasks) {
-            println ">>> Not creating a task"
-        }
-
-        @Validate
-        void hasSourceFiles(ModelMap<AdocSourceSet> sourceSets) {
-            sourceSets.afterEach {
-                assert it.srcDir != "src/not/funny"
             }
         }
     }

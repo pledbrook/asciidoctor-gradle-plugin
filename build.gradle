@@ -39,6 +39,11 @@ apply from: 'gradle/code-coverage.gradle'
 apply from: 'gradle/code-quality.gradle'
 apply from: 'gradle/integration-tests.gradle'
 
+version = "1.6.0-SNAPSHOT"
+group = "org.asciidoctor"
+sourceCompatibility = "1.6"
+targetCompatibility = "1.6"
+
 repositories {
     jcenter()
     maven { url 'http://dl.bintray.com/lordofthejars/maven'}
@@ -63,8 +68,12 @@ dependencies {
     // classes when writing integration tests.
     testCompile gradleTestKit()
 
-    intTestCompile gradleApi()
+    // TestKit has to come before Gradle API:
+    //
+    //   https://discuss.gradle.org/t/nosuchmethoderror-in-testkit-after-2-9-2-10-transition/13505
+    //
     intTestCompile gradleTestKit()
+    intTestCompile gradleApi()
     intTestCompile 'commons-io:commons-io:2.4'
     intTestCompile ('org.spockframework:spock-core:1.0-groovy-2.4') {
         exclude group: 'org.codehaus.groovy', module: 'groovy-all'
